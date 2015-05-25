@@ -1,0 +1,51 @@
+#! /bin/bash
+
+#Authors: Jan-Åke Larsson and Jonathan Jogenfors
+
+revision=HEAD
+while test $# -ne 0; do
+    case "$1" in
+        "-r")
+            shift
+            revision=$1
+            ;;
+        *)
+            if test -z "$1" ; then
+                echo "Empty string not allowed as argument"
+                exit 1
+            fi
+            src=${1%.tex}
+            ;;
+    esac
+    shift
+done
+
+
+
+if [ -z "$src" ]; then
+    MAINFILES=$(ls *.tex.latexmain)
+    if [ -z "$MAINFILES" ]; then
+        echo "No latexmain found" 
+        exit 1
+    fi
+
+    src=$(basename -s .tex.latexmain $MAINFILES)
+fi
+
+revision=$(git log --skip=1 -n 1 --pretty=format:%h -- $src.tex)
+
+TEMPDIR=/tmp/latexdiff
+
+OLDFILE=$TEMPDIR/$src.old.tex
+DIFFILE=$TEMPDIR/$src.diff.tex
+
+echo $OLDFILE
+echo $DIFFFILE
+
+mkdir -p $TEMPDIR
+
+
+git show $revision:./$src.tex > $OLDFILE
+latexdiff $OLDFILE $src.tex > $DIFFILE
+latexmk -pdf $DIFFILE
+evince $(basename -s .tex $DIFFILE).pdf

@@ -2,7 +2,7 @@
 
 #Authors: Jan-Åke Larsson and Jonathan Jogenfors
 
-revision=HEAD
+revision=
 while test $# -ne 0; do
     case "$1" in
         "-r")
@@ -10,42 +10,37 @@ while test $# -ne 0; do
             revision=$1
             ;;
         *)
-            if test -z "$1" ; then
-                echo "Empty string not allowed as argument"
-                exit 1
-            fi
             src=${1%.tex}
             ;;
     esac
     shift
 done
 
-
-
 if [ -z "$src" ]; then
     MAINFILES=$(ls *.tex.latexmain)
     if [ -z "$MAINFILES" ]; then
-        echo "No latexmain found" 
+        echo "No latexmain found"
         exit 1
     fi
 
     src=$(basename -s .tex.latexmain $MAINFILES)
 fi
 
-revision=$(git log --skip=1 -n 1 --pretty=format:%h -- $src.tex)
+if [ -z "$revision" ]; then
+	revision=$(git log --skip=1 -n 1 --pretty=format:%h -- $src.tex)
+fi
 
-TEMPDIR=/tmp/latexdiff
+TEMPDIR=$(mktemp -dt latexdiff.XXXXXXX)
 
 OLDFILE=$TEMPDIR/$src.old.tex
 DIFFILE=$TEMPDIR/$src.diff.tex
 
+echo $src.tex
 echo $OLDFILE
-echo $DIFFFILE
-
-mkdir -p $TEMPDIR
+echo $DIFFILE
 
 
-git show $revision:./$src.tex > $OLDFILE
+#git show $revision:./$src.tex > $OLDFILE
 latexdiff $OLDFILE $src.tex > $DIFFILE
 latexmk -pdf $DIFFILE
 evince $(basename -s .tex $DIFFILE).pdf

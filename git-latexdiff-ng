@@ -3,18 +3,33 @@
 # Git-latexdiff-ng: An attempt to simplify git-latexdiff
 # This is nothing more than a quick hack, be warned ;)
 
+#Requires latexmk.
+
 #To install, place in /usr/lib/git-core/ and make executable
 
 #Authors: Jan-Åke Larsson and Jonathan Jogenfors, both at Linköping University, Dept. of Electrical Engineering, Information Coding Group
 
 revision=
 src=
+openfile=true
 subdir=`git rev-parse --show-prefix`
 while test $# -ne 0; do
     case "$1" in
+        #All options are subject to change in the future.
         "-r")
             shift
+            # Manually specify a revision. If omitted, latexdiff-ng will guess for you!
             revision=$1
+            ;;
+        "-n")
+            shift
+            # Pass this option if you don't want to automatically open the produced diff pdf file
+            openfile=false
+            ;;
+        "-d")
+            # Manually specify an output directory. If omitted, latexdiff-ng will create a temp directory for you
+            shift
+            outputdir=$1
             ;;
         *)
             src=${1%.tex}
@@ -29,8 +44,7 @@ if [ -z "$src" ]; then
     # Heuristic: If the tex files follow the latexmain standard, things are much easier
     MAINFILES=$(ls *.tex.latexmain)
     if [ -z "$MAINFILES" ]; then
-        # Yes, we have a latexmain file, so use that.
-        echo "No latexmain found"
+        echo "No latexmain found and no source file specified. Exiting."
         exit 1
     fi
     src=${MAINFILES%.tex.latexmain}
@@ -45,6 +59,14 @@ if [ -z "$revision" ]; then
 		else
 				revision="HEAD"
 		fi
+fi
+
+echo "Taking diff from revision $revision."
+
+#Did the user specify an output directory?
+if [ -z "$outputdir" ]; then
+    # No, so create one in /tmp
+    outputdir=$(mktemp -d /tmp/tmp.latexdiff-ng.XXXXXXX)
 fi
 
 OLDFILE=$src.old.tex
@@ -68,8 +90,14 @@ if [ $? -ne 0 ]; then
     echo "Could not compile document"
     exit 1
 fi
+echo "latexdiff-ng cleaning up..."
 latexmk -c -f -pdf $DIFFILE
-if [ $? -ne 0 ]; then
-    echo "Could not compile document"
-    exit 1
+echo "All done!"
+echo
+
+if $openfile; then
+    echo "Opening the resulting pdf file."
+    echo "If you don't want me to do this, use the -n option"
+
+    xdg-open $(basename -s .tex $DIFFILE).pdf
 fi

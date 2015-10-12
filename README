@@ -1,0 +1,23 @@
+This is our humble attempt at making git-latexdiff better. We call it git-latexdiff-ng.
+
+Authors: Jonathan Jogenfors and Jan-Åke Larsson, Linköping University.
+
+Warning: This is a hack script we use internally for our own pleasure. Patches and suggestions are more than welcome!
+
+Project page: https://github.com/etnoy/git-latexdiff-ng
+
+To install: run 
+make install
+as root.
+
+To use, just type
+git latexdiff-ng
+
+if your git document follows the latexmain standard. 
+
+Otherwise, specify a main file:
+
+git latexdiff-ng document.tex
+
+By default, latexdiff-ng takes the previous revision of the source file. To override, use the -r option:
+git latexdiff-ng -r 456b39d

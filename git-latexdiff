@@ -1,8 +1,15 @@
 #! /bin/bash
 
-#Authors: Jan-Åke Larsson and Jonathan Jogenfors
+# Git-latexdiff-ng: An attempt to simplify git-latexdiff
+# This is nothing more than a quick hack, be warned ;)
+
+#To install, place in /usr/lib/git-core/ and make executable
+
+#Authors: Jan-Åke Larsson and Jonathan Jogenfors, both at Linköping University, Dept. of Electrical Engineering, Information Coding Group
 
 revision=
+src=
+subdir=`git rev-parse --show-prefix`
 while test $# -ne 0; do
     case "$1" in
         "-r")
@@ -16,31 +23,53 @@ while test $# -ne 0; do
     shift
 done
 
+# Did the user specify a source file?
 if [ -z "$src" ]; then
+
+    # Heuristic: If the tex files follow the latexmain standard, things are much easier
     MAINFILES=$(ls *.tex.latexmain)
     if [ -z "$MAINFILES" ]; then
+        # Yes, we have a latexmain file, so use that.
         echo "No latexmain found"
         exit 1
     fi
-
-    src=$(basename -s .tex.latexmain $MAINFILES)
+    src=${MAINFILES%.tex.latexmain}
 fi
 
+#Did the user specify a revision?
 if [ -z "$revision" ]; then
-	revision=$(git log --skip=1 -n 1 --pretty=format:%h -- $src.tex)
+    # No, so try to guess what the user wants
+		if git diff --quiet $src.tex; then
+            # Take the previous version of the file in question
+				revision="HEAD^"
+		else
+				revision="HEAD"
+		fi
 fi
 
-TEMPDIR=$(mktemp -dt latexdiff.XXXXXXX)
+OLDFILE=$src.old.tex
+DIFFILE=$src.diff.tex
 
-OLDFILE=$TEMPDIR/$src.old.tex
-DIFFILE=$TEMPDIR/$src.diff.tex
-
-echo $src.tex
 echo $OLDFILE
 echo $DIFFILE
 
-
-#git show $revision:./$src.tex > $OLDFILE
+git show $revision:$subdir$src.tex > $OLDFILE
+if [ $? -ne 0 ]; then
+    echo "Could not get previous revision"
+    exit 1
+fi
 latexdiff $OLDFILE $src.tex > $DIFFILE
-latexmk -pdf $DIFFILE
-evince $(basename -s .tex $DIFFILE).pdf
+if [ $? -ne 0 ]; then
+    echo "Could not take latexdiff"
+    exit 1
+fi
+latexmk -f -pdf $DIFFILE
+if [ $? -ne 0 ]; then
+    echo "Could not compile document"
+    exit 1
+fi
+latexmk -c -f -pdf $DIFFILE
+if [ $? -ne 0 ]; then
+    echo "Could not compile document"
+    exit 1
+fi
